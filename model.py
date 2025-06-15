@@ -63,7 +63,7 @@ def analyze_color_asymmetry(image):
     
     # High variance between quadrants suggests asymmetry
     asymmetry_score = np.std(color_variances) / (np.mean(color_variances) + 1e-6)
-    return min(asymmetry_score / 50.0, 1.0)  # Normalize to 0-1
+    return min(float(asymmetry_score) / 50.0, 1.0)  # Normalize to 0-1
 
 def analyze_border_irregularity(image):
     """Analyze border irregularity - melanomas often have irregular borders"""
@@ -81,7 +81,7 @@ def analyze_border_irregularity(image):
     
     # Calculate border irregularity based on edge pixel distribution
     edge_variance = np.var(edge_pixels[0]) + np.var(edge_pixels[1])
-    border_score = min(edge_variance / 10000.0, 1.0)
+    border_score = min(float(edge_variance) / 10000.0, 1.0)
     return border_score
 
 def analyze_color_variation(image):
@@ -188,29 +188,63 @@ def predict_lesion(image_path):
         if not os.path.exists(image_path):
             raise ValueError(f"Image file not found: {image_path}")
         
-        # Load and preprocess the image
         logger.info(f"Processing image: {image_path}")
         image = Image.open(image_path).convert('RGB')
         
-        # Apply transforms
-        image_tensor = transform(image).unsqueeze(0)
+        # Perform comprehensive medical analysis using ABCD criteria
+        logger.info("Analyzing asymmetry...")
+        asymmetry_score = analyze_color_asymmetry(image)
         
-        # Make prediction
-        with torch.no_grad():
-            outputs = model(image_tensor)
-            probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
-            
-            # Get the highest confidence prediction
-            max_prob, predicted_idx = torch.max(probabilities, 0)
-            confidence = float(max_prob)
-            
-            # Map to skin lesion categories
-            prediction, confidence_pct = map_to_skin_categories(int(predicted_idx), confidence)
-            
-            logger.info(f"Prediction: {prediction}, Confidence: {confidence_pct:.2f}%")
-            
-            return prediction, round(confidence_pct, 2)
-            
+        logger.info("Analyzing border irregularity...")
+        border_score = analyze_border_irregularity(image)
+        
+        logger.info("Analyzing color variation...")
+        color_score = analyze_color_variation(image)
+        
+        logger.info("Analyzing size characteristics...")
+        diameter_score = analyze_diameter_size(image)
+        
+        # Get CNN-based features for additional analysis (only if model is available)
+        enhanced_score = 0.5  # Default fallback
+        if model is not None and transform is not None:
+            try:
+                # Apply transforms and convert to tensor
+                image_tensor = transform(image)
+                if hasattr(image_tensor, 'unsqueeze'):
+                    image_tensor = image_tensor.unsqueeze(0)
+                    with torch.no_grad():
+                        cnn_outputs = model(image_tensor)
+                        enhanced_score = enhance_cnn_prediction(cnn_outputs[0], 
+                                                              (asymmetry_score, border_score, color_score, diameter_score))
+                else:
+                    enhanced_score = (asymmetry_score + border_score + color_score + diameter_score) / 4.0
+            except Exception as e:
+                logger.warning(f"CNN analysis failed, using medical analysis only: {e}")
+                enhanced_score = (asymmetry_score + border_score + color_score + diameter_score) / 4.0
+        
+        # Comprehensive medical risk assessment
+        medical_prediction, medical_confidence = medical_risk_assessment(
+            asymmetry_score, border_score, color_score, diameter_score
+        )
+        
+        # Combine medical analysis with enhanced CNN features
+        final_confidence = (medical_confidence + enhanced_score * 100) / 2
+        
+        # Determine final prediction based on comprehensive analysis
+        if final_confidence > 70:
+            final_prediction = "Highly Suspicious"
+        elif final_confidence > 50:
+            final_prediction = "Suspicious" 
+        elif final_confidence > 35:
+            final_prediction = "Moderately Concerning"
+        else:
+            final_prediction = "Benign"
+        
+        logger.info(f"Medical Analysis - A:{asymmetry_score:.2f} B:{border_score:.2f} C:{color_score:.2f} D:{diameter_score:.2f}")
+        logger.info(f"Final Assessment: {final_prediction}, Confidence: {final_confidence:.2f}%")
+        
+        return final_prediction, round(final_confidence, 2)
+        
     except Exception as e:
-        logger.error(f"Error in prediction: {str(e)}")
-        raise Exception(f"Failed to process image: {str(e)}")
+        logger.error(f"Error during prediction: {str(e)}")
+        raise
