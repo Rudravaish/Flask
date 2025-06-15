@@ -1,0 +1,119 @@
+Step-by-Step Guide to Build the Base Version on Replit
+🎯 What You’ll Build:
+A simple Flask app
+
+User uploads a lesion image
+
+Backend uses a pretrained AI image classifier (mock or real)
+
+Outputs: “Benign” or “Suspicious” + Confidence Score
+
+🛠️ Replit Project Setup Instructions
+1. Start a New Replit
+Go to replit.com
+
+Create a new Python (Flask) project
+
+2. Install Required Packages
+In replit.nix or packages.txt, make sure you include:
+
+txt
+Copy
+Edit
+flask
+torch
+torchvision
+pillow
+3. Create Project File Structure
+bash
+Copy
+Edit
+/main.py              → Flask server
+/static/              → For uploaded images
+/templates/index.html → Upload form & result
+/model.py             → Model loading and prediction
+4. main.py (Flask App)
+python
+Copy
+Edit
+from flask import Flask, render_template, request
+from model import predict_lesion
+import os
+
+app = Flask(__name__)
+UPLOAD_FOLDER = 'static'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+@app.route('/', methods=['GET', 'POST'])
+def home():
+    if request.method == 'POST':
+        img = request.files['image']
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], img.filename)
+        img.save(filepath)
+        prediction, confidence = predict_lesion(filepath)
+        return render_template('index.html', result=prediction, confidence=confidence, image_path=filepath)
+    return render_template('index.html')
+
+app.run(host='0.0.0.0', port=81)
+5. model.py (Prediction Logic)
+python
+Copy
+Edit
+from torchvision import models, transforms
+from PIL import Image
+import torch
+
+# Load a pretrained model (mock or real)
+model = models.mobilenet_v2(pretrained=True)
+model.eval()
+
+# Dummy class labels for skin lesions
+classes = ['Benign', 'Suspicious']
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor()
+])
+
+def predict_lesion(image_path):
+    image = Image.open(image_path).convert('RGB')
+    image = transform(image).unsqueeze(0)
+    with torch.no_grad():
+        output = model(image)
+        prob = torch.nn.functional.softmax(output[0], dim=0)
+        confidence = float(prob.max())
+        predicted_class = classes[prob.argmax()]
+    return predicted_class, round(confidence * 100, 2)
+6. templates/index.html (Frontend)
+html
+Copy
+Edit
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Skin Lesion Classifier</title>
+</head>
+<body>
+    <h1>Upload Skin Lesion Image</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*" required>
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if result %}
+        <h2>Prediction: {{ result }}</h2>
+        <p>Confidence: {{ confidence }}%</p>
+        <img src="{{ image_path }}" width="300">
+    {% endif %}
+</body>
+</html>
+🧪 Notes
+The MobileNet model used is a general classifier. For production, you’d fine-tune a model on the ISIC skin lesion dataset.
+
+For testing, MobileNet will still output something, and the classes list is mocked for now.
+
+You can replace the model with a skin-specific classifier later.
+
+✅ What You Can Tell Replit (Word-for-word)
+I’m building a Flask app that lets users upload a skin lesion image and returns a prediction using a pretrained AI model (like MobileNet). Help me create a basic upload form in HTML, save the image to a folder, and pass it through a PyTorch model for classification. I want the app to show the result and a confidence score along with the uploaded image.
+
