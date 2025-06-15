@@ -18,7 +18,7 @@ def initialize_model():
     try:
         # Load a pretrained MobileNet v2 model
         logger.info("Loading MobileNet v2 model...")
-        model = models.mobilenet_v2(pretrained=True)
+        model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
         model.eval()
         
         # Define image preprocessing transforms
