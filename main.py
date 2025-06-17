@@ -21,6 +21,22 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 # Create upload directory if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+def cleanup_old_uploads():
+    """Clean up uploaded files older than 1 hour to prevent storage issues."""
+    try:
+        import time
+        current_time = time.time()
+        for filename in os.listdir(UPLOAD_FOLDER):
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            if os.path.isfile(filepath):
+                file_age = current_time - os.path.getmtime(filepath)
+                # Remove files older than 1 hour (3600 seconds)
+                if file_age > 3600:
+                    os.remove(filepath)
+                    app.logger.info(f"Cleaned up old file: {filename}")
+    except Exception as e:
+        app.logger.warning(f"Error during cleanup: {str(e)}")
+
 def allowed_file(filename):
     """Check if the uploaded file has an allowed extension."""
     return '.' in filename and \
@@ -69,6 +85,9 @@ def home():
                     prediction, confidence = predict_lesion(filepath)
                     app.logger.info(f"Prediction: {prediction}, Confidence: {confidence}%")
                     
+                    # Clean up old uploaded files to prevent storage issues
+                    cleanup_old_uploads()
+                    
                     return render_template('index.html', 
                                          result=prediction, 
                                          confidence=confidence, 
@@ -93,6 +112,25 @@ def home():
 def too_large(e):
     """Handle file too large error."""
     flash('File is too large. Please upload an image smaller than 16MB.', 'error')
+    return redirect(url_for('home'))
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """Handle 404 errors."""
+    return render_template('index.html'), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    """Handle internal server errors."""
+    app.logger.error(f"Internal server error: {str(e)}")
+    flash('An internal error occurred. Please try again.', 'error')
+    return redirect(url_for('home'))
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Handle any uncaught exceptions."""
+    app.logger.error(f"Unhandled exception: {str(e)}")
+    flash('An unexpected error occurred. Please try again.', 'error')
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
