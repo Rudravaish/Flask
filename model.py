@@ -317,19 +317,39 @@ def predict_lesion(image_path):
                         if criterion in advanced_results:
                             weighted_score += advanced_results[criterion] * weight
                     
-                    # Determine classification with skin tone considerations
-                    if weighted_score > 0.7:
-                        final_prediction = "Highly Suspicious"
-                        final_confidence = min(weighted_score * 100, 95)
-                    elif weighted_score > 0.5:
-                        final_prediction = "Suspicious"
-                        final_confidence = weighted_score * 100
-                    elif weighted_score > 0.35:
-                        final_prediction = "Moderately Concerning"
-                        final_confidence = weighted_score * 100
+                    # Enhanced classification with improved thresholds for all skin tones
+                    concerning_features = sum(1 for criterion in ['asymmetry', 'border', 'color', 'diameter']
+                                            if advanced_results.get(criterion, 0) > 0.6)
+                    
+                    # Adjust thresholds based on skin tone and feature combinations
+                    if advanced_results.get('detected_skin_tone') in ['V', 'VI']:
+                        # More conservative thresholds for darker skin due to analysis complexity
+                        if weighted_score > 0.65 or concerning_features >= 3:
+                            final_prediction = "Suspicious - Recommend Dermatologist"
+                            final_confidence = min(weighted_score * 100, 92)
+                        elif weighted_score > 0.45 or concerning_features >= 2:
+                            final_prediction = "Moderately Concerning"
+                            final_confidence = weighted_score * 100
+                        elif weighted_score > 0.25:
+                            final_prediction = "Monitor Closely"
+                            final_confidence = weighted_score * 85
+                        else:
+                            final_prediction = "Likely Benign"
+                            final_confidence = max(25, 100 - weighted_score * 100)
                     else:
-                        final_prediction = "Benign"
-                        final_confidence = max(20, 100 - weighted_score * 100)
+                        # Standard thresholds for lighter skin tones
+                        if weighted_score > 0.7 or concerning_features >= 3:
+                            final_prediction = "Highly Suspicious"
+                            final_confidence = min(weighted_score * 100, 95)
+                        elif weighted_score > 0.5 or concerning_features >= 2:
+                            final_prediction = "Suspicious"
+                            final_confidence = weighted_score * 100
+                        elif weighted_score > 0.35:
+                            final_prediction = "Moderately Concerning"
+                            final_confidence = weighted_score * 90
+                        else:
+                            final_prediction = "Benign"
+                            final_confidence = max(20, 100 - weighted_score * 100)
                     
                     logger.info(f"Advanced Analysis - Skin Type: {advanced_results.get('detected_skin_tone', 'Unknown')}")
                     logger.info(f"Features - A:{advanced_results.get('asymmetry', 0):.2f} B:{advanced_results.get('border', 0):.2f} C:{advanced_results.get('color', 0):.2f} D:{advanced_results.get('diameter', 0):.2f}")
@@ -392,28 +412,53 @@ def predict_lesion(image_path):
                 logger.warning(f"CNN analysis failed, using medical analysis only: {e}")
                 enhanced_score = (asymmetry_score + border_score + color_score + diameter_score) / 4.0
         
-        # Comprehensive medical risk assessment
-        medical_prediction, medical_confidence = medical_risk_assessment(
-            asymmetry_score, border_score, color_score, diameter_score
-        )
+        # Enhanced medical risk assessment with improved weighting
+        enhanced_asymmetry = min(asymmetry_score * 1.15, 1.0)  # Boost asymmetry importance
+        enhanced_border = border_score
+        enhanced_color = min(color_score * 1.1, 1.0)  # Boost color variation
+        enhanced_diameter = diameter_score
         
-        # Combine medical analysis with enhanced CNN features
-        final_confidence = (medical_confidence + enhanced_score * 100) / 2
+        # Count concerning features for feature-based classification
+        concerning_features = sum(1 for score in [enhanced_asymmetry, enhanced_border, enhanced_color, enhanced_diameter] if score > 0.6)
         
-        # Determine final prediction based on comprehensive analysis
-        if final_confidence > 70:
+        # Weighted risk score with clinical relevance
+        risk_score = (enhanced_asymmetry * 0.3 + enhanced_border * 0.3 + enhanced_color * 0.25 + enhanced_diameter * 0.15)
+        
+        # Combine with CNN enhanced score if available
+        if enhanced_score != 0.5:  # CNN analysis was successful
+            combined_score = (risk_score * 0.6 + enhanced_score * 0.4)
+        else:
+            combined_score = risk_score
+        
+        # Enhanced classification logic based on features and scores
+        if concerning_features >= 3 or combined_score > 0.75:
             final_prediction = "Highly Suspicious"
-        elif final_confidence > 50:
-            final_prediction = "Suspicious" 
-        elif final_confidence > 35:
+            final_confidence = min(80 + (combined_score * 15), 95)
+        elif concerning_features >= 2 or combined_score > 0.55:
+            final_prediction = "Suspicious"
+            final_confidence = 65 + (combined_score * 25)
+        elif concerning_features >= 1 or combined_score > 0.35:
             final_prediction = "Moderately Concerning"
+            final_confidence = 50 + (combined_score * 30)
         else:
             final_prediction = "Benign"
+            final_confidence = max(25, 80 - (combined_score * 55))
         
-        logger.info(f"Medical Analysis - A:{asymmetry_score:.2f} B:{border_score:.2f} C:{color_score:.2f} D:{diameter_score:.2f}")
+        # Create analysis data for UI display
+        fallback_analysis = {
+            'asymmetry': enhanced_asymmetry,
+            'border': enhanced_border,
+            'color': enhanced_color,
+            'diameter': enhanced_diameter,
+            'detected_skin_tone': 'III',  # Default fallback
+            'analysis_type': 'enhanced_fallback'
+        }
+        
+        logger.info(f"Enhanced Medical Analysis - Features: {concerning_features}/4 concerning")
+        logger.info(f"Enhanced scores - A:{enhanced_asymmetry:.2f} B:{enhanced_border:.2f} C:{enhanced_color:.2f} D:{enhanced_diameter:.2f}")
         logger.info(f"Final Assessment: {final_prediction}, Confidence: {final_confidence:.2f}%")
         
-        return final_prediction, round(final_confidence, 2)
+        return final_prediction, round(final_confidence, 2), fallback_analysis
         
     except Exception as e:
         logger.error(f"Error during prediction: {str(e)}")

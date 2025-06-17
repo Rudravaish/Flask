@@ -221,234 +221,79 @@
                     </div>
                     {% endif %}
                     
-                    <!-- Medical Explanation Section -->
-                    {% if medical_explanation %}
+                    <!-- Analysis Details -->
+                    {% if analysis_summary %}
                     <div class="mt-4">
                         <h5 class="text-primary mb-3">
-                            <i class="fas fa-stethoscope me-2"></i>Medical Analysis Explanation
+                            <i class="fas fa-chart-line me-2"></i>Analysis Details
                         </h5>
                         
-                        <!-- ABCDE Analysis -->
-                        {% if medical_explanation.abcde_analysis %}
                         <div class="card mb-3">
                             <div class="card-header bg-light">
-                                <h6 class="mb-0">ABCDE Criteria Assessment</h6>
-                            </div>
-                            <div class="card-body">
-                                {% for criterion, details in medical_explanation.abcde_analysis.items() %}
-                                <div class="row mb-2">
-                                    <div class="col-3">
-                                        <strong>{{ criterion.title() }}:</strong>
-                                    </div>
-                                    <div class="col-2">
-                                        <span class="badge 
-                                            {% if details.concern_level == 'High' %}bg-danger
-                                            {% elif details.concern_level == 'Moderate' %}bg-warning
-                                            {% else %}bg-success{% endif %}">
-                                            {{ details.score|round(2) }}
-                                        </span>
-                                    </div>
-                                    <div class="col-7">
-                                        <small>{{ details.explanation }}</small>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Overall Assessment -->
-                        {% if medical_explanation.overall_assessment %}
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Overall Assessment</h6>
+                                <h6 class="mb-0">ABCDE Feature Analysis</h6>
                             </div>
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <p><strong>Risk Level:</strong> 
-                                            <span class="badge 
-                                                {% if medical_explanation.overall_assessment.risk_level == 'High' %}bg-danger
-                                                {% elif 'Moderate' in medical_explanation.overall_assessment.risk_level %}bg-warning
-                                                {% else %}bg-success{% endif %}">
-                                                {{ medical_explanation.overall_assessment.risk_level }}
+                                        <p><strong>Asymmetry:</strong> 
+                                            <span class="badge {% if analysis_summary.features.asymmetry > 0.6 %}bg-danger{% elif analysis_summary.features.asymmetry > 0.4 %}bg-warning{% else %}bg-success{% endif %}">
+                                                {{ "%.2f"|format(analysis_summary.features.asymmetry) }}
                                             </span>
                                         </p>
-                                        <p><strong>Urgency:</strong> {{ medical_explanation.overall_assessment.urgency }}</p>
+                                        <p><strong>Border Irregularity:</strong> 
+                                            <span class="badge {% if analysis_summary.features.border > 0.6 %}bg-danger{% elif analysis_summary.features.border > 0.4 %}bg-warning{% else %}bg-success{% endif %}">
+                                                {{ "%.2f"|format(analysis_summary.features.border) }}
+                                            </span>
+                                        </p>
                                     </div>
                                     <div class="col-md-6">
-                                        <p><strong>Concerning Features:</strong> {{ medical_explanation.overall_assessment.concerning_features_count }}/4</p>
+                                        <p><strong>Color Variation:</strong> 
+                                            <span class="badge {% if analysis_summary.features.color > 0.6 %}bg-danger{% elif analysis_summary.features.color > 0.4 %}bg-warning{% else %}bg-success{% endif %}">
+                                                {{ "%.2f"|format(analysis_summary.features.color) }}
+                                            </span>
+                                        </p>
+                                        <p><strong>Diameter/Size:</strong> 
+                                            <span class="badge {% if analysis_summary.features.diameter > 0.6 %}bg-danger{% elif analysis_summary.features.diameter > 0.4 %}bg-warning{% else %}bg-success{% endif %}">
+                                                {{ "%.2f"|format(analysis_summary.features.diameter) }}
+                                            </span>
+                                        </p>
                                     </div>
                                 </div>
-                                <p class="mt-2">{{ medical_explanation.overall_assessment.summary }}</p>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Differential Diagnosis -->
-                        {% if medical_explanation.differential_diagnosis %}
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Possible Conditions (Differential Diagnosis)</h6>
-                            </div>
-                            <div class="card-body">
-                                {% for condition in medical_explanation.differential_diagnosis %}
-                                <div class="mb-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-1">{{ condition.condition }}</h6>
-                                        <span class="badge bg-secondary">{{ (condition.likelihood * 100)|round }}% likelihood</span>
-                                    </div>
-                                    <p class="mb-1 small">{{ condition.description }}</p>
-                                    <p class="mb-1 small text-muted"><strong>Key features:</strong> {{ condition.key_features|join(', ') }}</p>
-                                    <p class="mb-0 small text-info"><strong>Action needed:</strong> {{ condition.urgency }}</p>
+                                
+                                <div class="mt-3">
+                                    <p><strong>Detected Skin Type:</strong> 
+                                        <span class="badge bg-info">{{ analysis_summary.detected_skin_tone }}</span>
+                                    </p>
+                                    <p><strong>Analysis Method:</strong> 
+                                        <span class="badge bg-secondary">
+                                            {% if analysis_summary.analysis_type == 'darker_skin_specialized' %}
+                                                Enhanced for Darker Skin Tones
+                                            {% else %}
+                                                Standard Analysis
+                                            {% endif %}
+                                        </span>
+                                    </p>
                                 </div>
-                                {% endfor %}
                             </div>
                         </div>
-                        {% endif %}
                         
-                        <!-- Recommendations -->
-                        {% if medical_explanation.recommendations %}
-                        <div class="card mb-3">
+                        <div class="card">
                             <div class="card-header bg-light">
-                                <h6 class="mb-0">Medical Recommendations</h6>
+                                <h6 class="mb-0">Understanding Your Results</h6>
                             </div>
                             <div class="card-body">
                                 <ul class="mb-0">
-                                    {% for recommendation in medical_explanation.recommendations %}
-                                    <li>{{ recommendation }}</li>
-                                    {% endfor %}
+                                    <li><strong>Green scores (0.0-0.4):</strong> Features appear normal</li>
+                                    <li><strong>Yellow scores (0.4-0.6):</strong> Some irregularity detected</li>
+                                    <li><strong>Red scores (0.6-1.0):</strong> Concerning features present</li>
                                 </ul>
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    
-                    <!-- AI Medical Chatbot -->
-                    {% if analysis_data %}
-                    <div class="mt-4">
-                        <h5 class="text-success mb-3">
-                            <i class="fas fa-robot me-2"></i>Ask the AI Medical Assistant
-                        </h5>
-                        <div class="card">
-                            <div class="card-body">
-                                <div id="chat-messages" class="mb-3 border rounded p-3" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa;">
-                                    <div class="alert alert-info mb-2">
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        I can explain your analysis results, discuss the ABCDE criteria, or answer questions about skin cancer detection. What would you like to know?
-                                    </div>
-                                </div>
-                                <div class="input-group">
-                                    <input type="text" id="chat-input" class="form-control border-2" 
-                                           placeholder="Ask about your analysis results..." 
-                                           onkeypress="if(event.key==='Enter') sendMessage()"
-                                           style="font-size: 14px;">
-                                    <button class="btn btn-success border-2" type="button" onclick="sendMessage()">
-                                        <i class="fas fa-paper-plane"></i> Ask
-                                    </button>
-                                </div>
-                                <small class="text-muted mt-2 d-block">
-                                    Example questions: "What do these ABCDE scores mean?", "Should I be worried?", "What are the next steps?"
-                                </small>
+                                <p class="mt-3 text-muted small">
+                                    Higher scores indicate features more commonly seen in malignant lesions. 
+                                    This analysis is optimized for your skin type to improve accuracy.
+                                </p>
                             </div>
                         </div>
                     </div>
-                    
-                    <script>
-                        const analysisData = {{ analysis_data|tojson|safe }};
-                        
-                        function sendMessage() {
-                            const input = document.getElementById('chat-input');
-                            const question = input.value.trim();
-                            
-                            if (!question) return;
-                            
-                            // Add user message to chat
-                            const chatMessages = document.getElementById('chat-messages');
-                            chatMessages.innerHTML += `
-                                <div class="mb-2">
-                                    <div class="d-flex justify-content-end">
-                                        <div class="bg-primary text-white p-2 rounded shadow-sm" style="max-width: 80%;">
-                                            <strong>You:</strong> ${question}
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                            
-                            // Clear input
-                            input.value = '';
-                            
-                            // Show loading message
-                            chatMessages.innerHTML += `
-                                <div class="mb-2" id="loading-message">
-                                    <div class="d-flex justify-content-start">
-                                        <div class="bg-light text-dark p-2 rounded border">
-                                            <i class="fas fa-spinner fa-spin text-primary"></i> Analyzing your question...
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                            
-                            // Scroll to bottom
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
-                            
-                            // Send request to chatbot
-                            fetch('/chat', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    question: question,
-                                    analysis_data: analysisData
-                                })
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                // Remove loading message
-                                document.getElementById('loading-message').remove();
-                                
-                                // Add bot response
-                                chatMessages.innerHTML += `
-                                    <div class="mb-2">
-                                        <div class="d-flex justify-content-start">
-                                            <div class="bg-white text-dark p-3 rounded border shadow-sm" style="max-width: 80%;">
-                                                <div class="small text-success mb-2 fw-bold">
-                                                    <i class="fas fa-user-md"></i> AI Medical Assistant
-                                                </div>
-                                                <div class="text-dark">${data.response.replace(/\n/g, '<br>')}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                                
-                                // Scroll to bottom
-                                chatMessages.scrollTop = chatMessages.scrollHeight;
-                            })
-                            .catch(error => {
-                                // Remove loading message
-                                document.getElementById('loading-message').remove();
-                                
-                                // Add error message
-                                chatMessages.innerHTML += `
-                                    <div class="mb-2">
-                                        <div class="d-flex justify-content-start">
-                                            <div class="bg-danger text-white p-3 rounded shadow-sm" style="max-width: 80%;">
-                                                <div class="small mb-1 fw-bold">
-                                                    <i class="fas fa-exclamation-triangle"></i> Error
-                                                </div>
-                                                <div>Sorry, I couldn't process your question. Please try again.</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                                
-                                // Scroll to bottom
-                                chatMessages.scrollTop = chatMessages.scrollHeight;
-                            });
-                        }
-                    </script>
                     {% endif %}
                     
                     <!-- Additional Information -->

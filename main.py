@@ -55,29 +55,6 @@ FITZPATRICK_TYPES = {
 # Skin types with potential model bias
 BIAS_WARNING_TYPES = ["V", "VI"]
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    """Handle chatbot questions about analysis results"""
-    try:
-        data = request.get_json()
-        question = data.get('question', '')
-        analysis_data = data.get('analysis_data', {})
-        
-        if not question:
-            return {'response': 'Please ask a question about your analysis results.'}
-        
-        # Generate chatbot response
-        try:
-            from medical_chatbot import chat_with_medical_bot
-            response = chat_with_medical_bot(question, analysis_data)
-            return {'response': response}
-        except Exception as e:
-            app.logger.error(f"Chatbot error: {e}")
-            return {'response': 'I apologize, but I cannot provide a detailed response right now. Please consult with a dermatologist for professional medical advice.'}
-            
-    except Exception as e:
-        app.logger.error(f"Chat endpoint error: {e}")
-        return {'response': 'An error occurred. Please try again.'}
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
@@ -133,15 +110,19 @@ def home():
                     
                     app.logger.info(f"Prediction: {prediction}, Confidence: {confidence}%")
                     
-                    # Generate medical explanation using the chatbot
-                    medical_explanation = None
+                    # Generate detailed analysis summary
+                    analysis_summary = None
                     if analysis_data:
-                        try:
-                            from medical_chatbot import get_medical_explanation
-                            medical_explanation = get_medical_explanation(analysis_data, skin_type)
-                            app.logger.info("Generated comprehensive medical explanation")
-                        except Exception as e:
-                            app.logger.warning(f"Failed to generate medical explanation: {e}")
+                        analysis_summary = {
+                            'detected_skin_tone': analysis_data.get('detected_skin_tone', skin_type),
+                            'features': {
+                                'asymmetry': analysis_data.get('asymmetry', 0),
+                                'border': analysis_data.get('border', 0),
+                                'color': analysis_data.get('color', 0),
+                                'diameter': analysis_data.get('diameter', 0)
+                            },
+                            'analysis_type': analysis_data.get('analysis_type', 'standard')
+                        }
                     
                     # Check for bias warning
                     bias_warning = None
@@ -167,8 +148,7 @@ def home():
                                          skin_type_description=FITZPATRICK_TYPES[skin_type],
                                          bias_warning=bias_warning,
                                          enhanced_warning=enhanced_warning,
-                                         medical_explanation=medical_explanation,
-                                         analysis_data=analysis_data,
+                                         analysis_summary=analysis_summary,
                                          detected_skin_tone=detected_skin_tone,
                                          fitzpatrick_types=FITZPATRICK_TYPES)
                 except Exception as e:
