@@ -23,6 +23,11 @@ def initialize_model():
         model = models.mobilenet_v2(weights=models.MobileNet_V2_Weights.IMAGENET1K_V1)
         model.eval()
         
+        # Set model to use less memory
+        if torch.cuda.is_available():
+            model = model.cuda()
+            torch.cuda.empty_cache()
+        
         # Define image preprocessing transforms
         transform = transforms.Compose([
             transforms.Resize((224, 224)),
@@ -35,7 +40,10 @@ def initialize_model():
         
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
-        raise
+        # Continue without CNN model - use medical analysis only
+        model = None
+        transform = None
+        logger.warning("Continuing with medical analysis only")
 
 # Initialize the model when the module is imported
 initialize_model()
@@ -224,12 +232,29 @@ def predict_lesion(image_path):
     Returns:
         tuple: (prediction, confidence_percentage)
     """
+    image = None
     try:
         if not os.path.exists(image_path):
             raise ValueError(f"Image file not found: {image_path}")
         
+        # Check file size to prevent memory issues
+        file_size = os.path.getsize(image_path)
+        if file_size > 50 * 1024 * 1024:  # 50MB limit
+            raise ValueError("Image file too large")
+        
         logger.info(f"Processing image: {image_path}")
-        image = Image.open(image_path).convert('RGB')
+        image = Image.open(image_path)
+        
+        # Validate image format and convert to RGB
+        if image.format not in ['JPEG', 'PNG', 'BMP', 'WEBP', 'GIF']:
+            raise ValueError(f"Unsupported image format: {image.format}")
+            
+        # Check image dimensions to prevent memory issues
+        width, height = image.size
+        if width * height > 50000000:  # ~50MP limit
+            raise ValueError("Image resolution too high")
+            
+        image = image.convert('RGB')
         
         # Perform comprehensive medical analysis using ABCD criteria
         logger.info("Analyzing asymmetry...")
@@ -286,3 +311,14 @@ def predict_lesion(image_path):
     except Exception as e:
         logger.error(f"Error during prediction: {str(e)}")
         raise
+    finally:
+        # Clean up image memory
+        if image is not None:
+            try:
+                image.close()
+            except Exception:
+                pass
+        
+        # Clear torch cache if available
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()

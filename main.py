@@ -55,7 +55,7 @@ def home():
             file = request.files['image']
             
             # Check if file was actually selected
-            if file.filename == '':
+            if not file.filename or file.filename == '':
                 flash('No file selected. Please choose an image to upload.', 'error')
                 return redirect(request.url)
             
@@ -64,9 +64,9 @@ def home():
                 flash('Invalid file type. Please upload an image file (PNG, JPG, JPEG, GIF, BMP, WebP).', 'error')
                 return redirect(request.url)
             
-            if file and allowed_file(file.filename):
-                # Secure the filename
-                filename = secure_filename(file.filename)
+            if file and file.filename and allowed_file(file.filename):
+                # Secure the filename - we know filename is not None at this point
+                filename = secure_filename(str(file.filename))
                 
                 # Create unique filename to avoid conflicts
                 import time
