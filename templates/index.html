@@ -205,6 +205,14 @@
                     </div>
                     {% endif %}
                     
+                    <!-- Enhanced Warning for Darker Skin Tones -->
+                    {% if enhanced_warning %}
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Enhanced Analysis:</strong> {{ enhanced_warning }}
+                    </div>
+                    {% endif %}
+                    
                     <!-- Uploaded Image -->
                     {% if image_path %}
                     <div class="mb-3">

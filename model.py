@@ -13,6 +13,15 @@ logger = logging.getLogger(__name__)
 model = None
 transform = None
 
+# Try to import advanced skin analysis
+try:
+    from enhanced_skin_analysis import get_advanced_skin_analysis
+    advanced_analysis_available = True
+    logger.info("Advanced skin tone analysis module loaded successfully")
+except ImportError:
+    advanced_analysis_available = False
+    logger.warning("Advanced skin analysis not available")
+
 # Try to import enhanced ISIC model
 try:
     from isic_model import get_enhanced_prediction
@@ -286,7 +295,53 @@ def predict_lesion(image_path):
         logger.info("Analyzing size characteristics...")
         diameter_score = analyze_diameter_size(image)
         
-        # Try to use enhanced ISIC model first for better accuracy
+        # Try advanced skin tone analysis first (best for darker skin tones)
+        if advanced_analysis_available:
+            try:
+                logger.info("Using advanced skin tone-aware analysis...")
+                advanced_results = get_advanced_skin_analysis(image_path)
+                
+                if advanced_results and 'analysis_type' in advanced_results:
+                    # Use advanced analysis weights based on detected skin tone
+                    if advanced_results.get('detected_skin_tone') in ['V', 'VI']:
+                        # Use darker skin weights
+                        weights = {'asymmetry': 0.20, 'border': 0.25, 'color': 0.35, 'diameter': 0.15, 'evolution': 0.05}
+                        logger.info(f"Applied darker skin tone analysis for Type {advanced_results.get('detected_skin_tone')}")
+                    else:
+                        # Use standard weights
+                        weights = {'asymmetry': 0.25, 'border': 0.30, 'color': 0.30, 'diameter': 0.15, 'evolution': 0.00}
+                    
+                    # Calculate weighted score
+                    weighted_score = 0
+                    for criterion, weight in weights.items():
+                        if criterion in advanced_results:
+                            weighted_score += advanced_results[criterion] * weight
+                    
+                    # Determine classification with skin tone considerations
+                    if weighted_score > 0.7:
+                        final_prediction = "Highly Suspicious"
+                        final_confidence = min(weighted_score * 100, 95)
+                    elif weighted_score > 0.5:
+                        final_prediction = "Suspicious"
+                        final_confidence = weighted_score * 100
+                    elif weighted_score > 0.35:
+                        final_prediction = "Moderately Concerning"
+                        final_confidence = weighted_score * 100
+                    else:
+                        final_prediction = "Benign"
+                        final_confidence = max(20, 100 - weighted_score * 100)
+                    
+                    logger.info(f"Advanced Analysis - Skin Type: {advanced_results.get('detected_skin_tone', 'Unknown')}")
+                    logger.info(f"Features - A:{advanced_results.get('asymmetry', 0):.2f} B:{advanced_results.get('border', 0):.2f} C:{advanced_results.get('color', 0):.2f} D:{advanced_results.get('diameter', 0):.2f}")
+                    logger.info(f"Final Assessment: {final_prediction}, Confidence: {final_confidence:.2f}%")
+                    
+                    # Return results with additional metadata for chatbot
+                    return final_prediction, round(final_confidence, 2), advanced_results
+                    
+            except Exception as e:
+                logger.warning(f"Advanced skin analysis failed, trying fallback: {e}")
+        
+        # Try to use enhanced ISIC model as backup
         if enhanced_model_available:
             try:
                 logger.info("Using enhanced ISIC-based prediction...")
@@ -294,7 +349,7 @@ def predict_lesion(image_path):
                 if enhanced_prediction != "Error in Analysis":
                     logger.info(f"Enhanced ISIC Model: {enhanced_prediction}, Confidence: {enhanced_confidence:.2f}%")
                     logger.info(f"Medical Analysis - A:{asymmetry_score:.2f} B:{border_score:.2f} C:{color_score:.2f} D:{diameter_score:.2f}")
-                    return enhanced_prediction, enhanced_confidence
+                    return enhanced_prediction, enhanced_confidence, None
             except Exception as e:
                 logger.warning(f"Enhanced model failed, trying backup: {e}")
         

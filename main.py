@@ -55,6 +55,30 @@ FITZPATRICK_TYPES = {
 # Skin types with potential model bias
 BIAS_WARNING_TYPES = ["V", "VI"]
 
+@app.route('/chat', methods=['POST'])
+def chat():
+    """Handle chatbot questions about analysis results"""
+    try:
+        data = request.get_json()
+        question = data.get('question', '')
+        analysis_data = data.get('analysis_data', {})
+        
+        if not question:
+            return {'response': 'Please ask a question about your analysis results.'}
+        
+        # Generate chatbot response
+        try:
+            from medical_chatbot import chat_with_medical_bot
+            response = chat_with_medical_bot(question, analysis_data)
+            return {'response': response}
+        except Exception as e:
+            app.logger.error(f"Chatbot error: {e}")
+            return {'response': 'I apologize, but I cannot provide a detailed response right now. Please consult with a dermatologist for professional medical advice.'}
+            
+    except Exception as e:
+        app.logger.error(f"Chat endpoint error: {e}")
+        return {'response': 'An error occurred. Please try again.'}
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     """Main route for file upload and prediction."""
@@ -98,13 +122,38 @@ def home():
                 
                 # Make prediction
                 try:
-                    prediction, confidence = predict_lesion(filepath)
+                    prediction_result = predict_lesion(filepath)
+                    
+                    # Handle different return formats (with or without analysis metadata)
+                    if len(prediction_result) == 3:
+                        prediction, confidence, analysis_data = prediction_result
+                    else:
+                        prediction, confidence = prediction_result
+                        analysis_data = None
+                    
                     app.logger.info(f"Prediction: {prediction}, Confidence: {confidence}%")
+                    
+                    # Generate medical explanation using the chatbot
+                    medical_explanation = None
+                    if analysis_data:
+                        try:
+                            from medical_chatbot import get_medical_explanation
+                            medical_explanation = get_medical_explanation(analysis_data, skin_type)
+                            app.logger.info("Generated comprehensive medical explanation")
+                        except Exception as e:
+                            app.logger.warning(f"Failed to generate medical explanation: {e}")
                     
                     # Check for bias warning
                     bias_warning = None
                     if skin_type in BIAS_WARNING_TYPES:
                         bias_warning = f"Model may have reduced accuracy on Fitzpatrick skin type {skin_type} ({FITZPATRICK_TYPES[skin_type]}). Please consult a dermatologist for professional evaluation."
+                    
+                    # Enhanced bias warning for darker skin tones with better analysis
+                    detected_skin_tone = analysis_data.get('detected_skin_tone') if analysis_data else skin_type
+                    if detected_skin_tone in ['V', 'VI'] and analysis_data:
+                        enhanced_warning = f"Analysis optimized for darker skin tone (Type {detected_skin_tone}). This analysis accounts for melanin-specific patterns and post-inflammatory changes common in darker skin."
+                    else:
+                        enhanced_warning = None
                     
                     # Clean up old uploaded files to prevent storage issues
                     cleanup_old_uploads()
@@ -117,6 +166,10 @@ def home():
                                          skin_type=skin_type,
                                          skin_type_description=FITZPATRICK_TYPES[skin_type],
                                          bias_warning=bias_warning,
+                                         enhanced_warning=enhanced_warning,
+                                         medical_explanation=medical_explanation,
+                                         analysis_data=analysis_data,
+                                         detected_skin_tone=detected_skin_tone,
                                          fitzpatrick_types=FITZPATRICK_TYPES)
                 except Exception as e:
                     app.logger.error(f"Prediction error: {str(e)}")
