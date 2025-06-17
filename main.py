@@ -42,6 +42,19 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Define Fitzpatrick skin types
+FITZPATRICK_TYPES = {
+    "I": "Very Light / Pale White",
+    "II": "Light / White", 
+    "III": "Light Brown",
+    "IV": "Moderate Brown",
+    "V": "Dark Brown",
+    "VI": "Very Dark Brown to Black"
+}
+
+# Skin types with potential model bias
+BIAS_WARNING_TYPES = ["V", "VI"]
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
     """Main route for file upload and prediction."""
@@ -53,6 +66,9 @@ def home():
                 return redirect(request.url)
             
             file = request.files['image']
+            
+            # Get selected skin type
+            skin_type = request.form.get('skin_type', 'III')  # Default to Type III
             
             # Check if file was actually selected
             if not file.filename or file.filename == '':
@@ -85,6 +101,11 @@ def home():
                     prediction, confidence = predict_lesion(filepath)
                     app.logger.info(f"Prediction: {prediction}, Confidence: {confidence}%")
                     
+                    # Check for bias warning
+                    bias_warning = None
+                    if skin_type in BIAS_WARNING_TYPES:
+                        bias_warning = f"Model may have reduced accuracy on Fitzpatrick skin type {skin_type} ({FITZPATRICK_TYPES[skin_type]}). Please consult a dermatologist for professional evaluation."
+                    
                     # Clean up old uploaded files to prevent storage issues
                     cleanup_old_uploads()
                     
@@ -92,7 +113,11 @@ def home():
                                          result=prediction, 
                                          confidence=confidence, 
                                          image_path=filepath,
-                                         filename=unique_filename)
+                                         filename=unique_filename,
+                                         skin_type=skin_type,
+                                         skin_type_description=FITZPATRICK_TYPES[skin_type],
+                                         bias_warning=bias_warning,
+                                         fitzpatrick_types=FITZPATRICK_TYPES)
                 except Exception as e:
                     app.logger.error(f"Prediction error: {str(e)}")
                     flash('Error processing image. Please try again with a different image.', 'error')
@@ -106,7 +131,7 @@ def home():
             flash('An error occurred while processing your upload. Please try again.', 'error')
             return redirect(request.url)
     
-    return render_template('index.html')
+    return render_template('index.html', fitzpatrick_types=FITZPATRICK_TYPES)
 
 @app.errorhandler(413)
 def too_large(e):

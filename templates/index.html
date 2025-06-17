@@ -126,7 +126,26 @@
                                 </div>
                             </div>
                             
-                            <div class="d-grid mt-3">
+                            <!-- Fitzpatrick Skin Type Selection -->
+                            <div class="mt-4">
+                                <label for="skin_type" class="form-label">
+                                    <i class="fas fa-user me-2"></i>
+                                    <strong>Fitzpatrick Skin Type</strong>
+                                </label>
+                                <select name="skin_type" id="skin_type" class="form-select" required>
+                                    {% for type_id, description in fitzpatrick_types.items() %}
+                                    <option value="{{ type_id }}" {% if type_id == 'III' %}selected{% endif %}>
+                                        Type {{ type_id }} - {{ description }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Select your skin type to improve analysis accuracy. This helps account for potential model limitations across different skin tones.
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid mt-4">
                                 <button type="submit" class="btn btn-success btn-lg" id="analyzeBtn" disabled>
                                     <i class="fas fa-microscope me-2"></i>
                                     Analyze Image
@@ -167,6 +186,25 @@
                         </div>
                     </div>
                     
+                    <!-- Skin Type Information -->
+                    {% if skin_type %}
+                    <div class="mb-4">
+                        <h4 class="mb-2">Skin Type Analyzed:</h4>
+                        <span class="badge bg-info fs-6">
+                            <i class="fas fa-user me-2"></i>
+                            Fitzpatrick Type {{ skin_type }} - {{ skin_type_description }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Bias Warning -->
+                    {% if bias_warning %}
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Important Notice:</strong> {{ bias_warning }}
+                    </div>
+                    {% endif %}
+                    
                     <!-- Uploaded Image -->
                     {% if image_path %}
                     <div class="mb-3">
@@ -194,6 +232,16 @@
                                     <div class="flex-grow-1 ms-3">
                                         <h5>Upload Image</h5>
                                         <p class="text-muted">Select a clear, well-lit image of the skin lesion.</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex mb-3">
+                                    <div class="flex-shrink-0">
+                                        <span class="badge bg-primary rounded-pill">2</span>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>Select Skin Type</h5>
+                                        <p class="text-muted">Choose your Fitzpatrick skin type to improve analysis accuracy and account for potential model bias.</p>
                                     </div>
                                 </div>
                                 

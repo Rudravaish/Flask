@@ -1,0 +1,101 @@
+Sure! Below is a full Streamlit app (app.py) that:
+
+Loads a pretrained skin lesion classifier model (you’ll plug in your real trained model file)
+
+Lets the user upload a skin image
+
+Lets the user select Fitzpatrick skin type (I to VI)
+
+Runs prediction and shows confidence score
+
+Displays a warning message if the selected skin tone is known to have higher bias/lower model performance
+
+How to use this:
+Train your MobileNetV2 (or CNN) model on ISIC dataset, ideally with Fitzpatrick skin type metadata, then export as model.h5 (Keras/TensorFlow format).
+
+Upload your model.h5 file to the same folder as app.py on your local machine or cloud.
+
+Run this Streamlit app:
+
+bash
+Copy
+Edit
+streamlit run app.py
+app.py code:
+python
+Copy
+Edit
+import streamlit as st
+from PIL import Image
+import numpy as np
+import tensorflow as tf
+
+# Load your pretrained model (replace 'model.h5' with your model path)
+@st.cache(allow_output_mutation=True)
+def load_model():
+    model = tf.keras.models.load_model('model.h5')
+    return model
+
+model = load_model()
+
+# Define Fitzpatrick types
+FITZPATRICK_TYPES = {
+    "I": "Very Light / Pale White",
+    "II": "Light / White",
+    "III": "Light Brown",
+    "IV": "Moderate Brown",
+    "V": "Dark Brown",
+    "VI": "Very Dark Brown to Black"
+}
+
+# Example skin tone bias warning (customize based on your model's eval)
+BIAS_WARNING_TYPES = ["V", "VI"]  # Assume model is less accurate here
+
+st.title("Skin Lesion Classifier with Fitzpatrick Skin Type")
+
+# Image upload
+uploaded_file = st.file_uploader("Upload a skin lesion image", type=["jpg", "jpeg", "png"])
+
+# Skin type select box
+skin_type = st.selectbox("Select your Fitzpatrick skin type", options=list(FITZPATRICK_TYPES.keys()),
+                         format_func=lambda x: f"{x} - {FITZPATRICK_TYPES[x]}")
+
+def preprocess_image(img: Image.Image):
+    img = img.resize((224, 224))  # MobileNetV2 input size
+    img_array = np.array(img) / 255.0
+    if img_array.shape[-1] == 4:  # PNG with alpha channel
+        img_array = img_array[..., :3]
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array.astype(np.float32)
+
+if uploaded_file is not None:
+    image = Image.open(uploaded_file).convert('RGB')
+    st.image(image, caption="Uploaded Image", use_column_width=True)
+
+    input_tensor = preprocess_image(image)
+
+    # Predict
+    preds = model.predict(input_tensor)
+    confidence = float(np.max(preds))
+    predicted_class_idx = np.argmax(preds)
+    
+    # Example class labels, replace with your actual classes
+    class_labels = ["Benign", "Malignant"]
+    predicted_class = class_labels[predicted_class_idx]
+
+    st.write(f"**Prediction:** {predicted_class}")
+    st.write(f"**Confidence:** {confidence:.2%}")
+
+    # Bias warning
+    if skin_type in BIAS_WARNING_TYPES:
+        st.warning(f"⚠️ Warning: Model may have reduced accuracy on Fitzpatrick skin type {skin_type} ({FITZPATRICK_TYPES[skin_type]}). Use caution.")
+
+Notes:
+This is a basic working example.
+
+Replace 'model.h5' with your actual model file name.
+
+Adjust class_labels to match your classification output.
+
+Adjust BIAS_WARNING_TYPES to match skin types where your model has poorer performance based on evaluation.
+
