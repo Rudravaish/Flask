@@ -101,11 +101,16 @@ def home():
                 try:
                     prediction_result = predict_lesion(filepath)
                     
-                    # Handle different return formats (with or without analysis metadata)
-                    if len(prediction_result) == 3:
+                    # Handle different return formats safely
+                    if isinstance(prediction_result, tuple) and len(prediction_result) == 3:
                         prediction, confidence, analysis_data = prediction_result
-                    else:
+                    elif isinstance(prediction_result, tuple) and len(prediction_result) == 2:
                         prediction, confidence = prediction_result
+                        analysis_data = None
+                    else:
+                        # Fallback for unexpected formats
+                        prediction = "Error in Analysis"
+                        confidence = 0
                         analysis_data = None
                     
                     app.logger.info(f"Prediction: {prediction}, Confidence: {confidence}%")

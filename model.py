@@ -3,6 +3,7 @@ from PIL import Image, ImageStat, ImageFilter, ImageEnhance
 import torch
 import torch.nn.functional as F
 import numpy as np
+import cv2
 import logging
 import os
 
@@ -396,21 +397,8 @@ def predict_lesion(image_path):
             except Exception as e:
                 logger.warning(f"Trained model failed, falling back to medical analysis: {e}")
         
-        # Fallback to medical analysis with CNN features
-        enhanced_score = 0.5  # Default fallback
-        if model is not None and transform is not None:
-            try:
-                # Apply transforms and convert to tensor
-                image_tensor = transform(image)
-                # Add batch dimension for CNN input
-                image_tensor = image_tensor.unsqueeze(0)
-                with torch.no_grad():
-                    cnn_outputs = model(image_tensor)
-                    enhanced_score = enhance_cnn_prediction(cnn_outputs[0], 
-                                                          (asymmetry_score, border_score, color_score, diameter_score))
-            except Exception as e:
-                logger.warning(f"CNN analysis failed, using medical analysis only: {e}")
-                enhanced_score = (asymmetry_score + border_score + color_score + diameter_score) / 4.0
+        # Enhanced medical analysis without CNN complexity
+        enhanced_score = (asymmetry_score + border_score + color_score + diameter_score) / 4.0
         
         # Enhanced medical risk assessment with improved weighting
         enhanced_asymmetry = min(asymmetry_score * 1.15, 1.0)  # Boost asymmetry importance
