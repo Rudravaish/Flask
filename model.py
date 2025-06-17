@@ -13,6 +13,23 @@ logger = logging.getLogger(__name__)
 model = None
 transform = None
 
+# Try to import enhanced ISIC model
+try:
+    from isic_model import get_enhanced_prediction
+    enhanced_model_available = True
+    logger.info("Enhanced ISIC model module loaded successfully")
+except ImportError:
+    enhanced_model_available = False
+    logger.warning("Enhanced ISIC model not available, using fallback analysis")
+
+# Try to import trained model as backup
+try:
+    from trained_model import get_trained_prediction, is_trained_model_available
+    trained_model_available = True
+    logger.info("Trained ISIC model module loaded successfully")
+except ImportError:
+    trained_model_available = False
+
 def initialize_model():
     """Initialize the model and transforms."""
     global model, transform
@@ -269,7 +286,42 @@ def predict_lesion(image_path):
         logger.info("Analyzing size characteristics...")
         diameter_score = analyze_diameter_size(image)
         
-        # Get CNN-based features for additional analysis (only if model is available)
+        # Try to use enhanced ISIC model first for better accuracy
+        if enhanced_model_available:
+            try:
+                logger.info("Using enhanced ISIC-based prediction...")
+                enhanced_prediction, enhanced_confidence = get_enhanced_prediction(image_path)
+                if enhanced_prediction != "Error in Analysis":
+                    logger.info(f"Enhanced ISIC Model: {enhanced_prediction}, Confidence: {enhanced_confidence:.2f}%")
+                    logger.info(f"Medical Analysis - A:{asymmetry_score:.2f} B:{border_score:.2f} C:{color_score:.2f} D:{diameter_score:.2f}")
+                    return enhanced_prediction, enhanced_confidence
+            except Exception as e:
+                logger.warning(f"Enhanced model failed, trying backup: {e}")
+        
+        # Try trained model as backup
+        if trained_model_available:
+            try:
+                logger.info("Using trained ISIC model for prediction...")
+                trained_prediction, trained_confidence = get_trained_prediction(image_path)
+                if trained_prediction is not None:
+                    logger.info(f"ISIC Model: {trained_prediction}, Confidence: {trained_confidence:.2f}%")
+                    
+                    # Combine with medical analysis for enhanced accuracy
+                    medical_prediction, medical_confidence = medical_risk_assessment(
+                        asymmetry_score, border_score, color_score, diameter_score
+                    )
+                    
+                    # Weight the trained model more heavily but consider medical analysis
+                    final_confidence = (trained_confidence * 0.7 + medical_confidence * 0.3)
+                    
+                    logger.info(f"Medical Analysis - A:{asymmetry_score:.2f} B:{border_score:.2f} C:{color_score:.2f} D:{diameter_score:.2f}")
+                    logger.info(f"Combined Assessment: {trained_prediction}, Confidence: {final_confidence:.2f}%")
+                    
+                    return trained_prediction, round(final_confidence, 2)
+            except Exception as e:
+                logger.warning(f"Trained model failed, falling back to medical analysis: {e}")
+        
+        # Fallback to medical analysis with CNN features
         enhanced_score = 0.5  # Default fallback
         if model is not None and transform is not None:
             try:
