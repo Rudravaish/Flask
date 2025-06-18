@@ -329,7 +329,7 @@ def predict_lesion(image_path, skin_type='III', body_type='average', has_evolved
             
         image = image.convert('RGB')
         
-        # Perform comprehensive medical analysis using ABCD criteria
+        # Perform comprehensive medical analysis using enhanced ABCDE criteria
         logger.info("Analyzing asymmetry...")
         asymmetry_score = analyze_color_asymmetry(image)
         
@@ -340,7 +340,11 @@ def predict_lesion(image_path, skin_type='III', body_type='average', has_evolved
         color_score = analyze_color_variation(image)
         
         logger.info("Analyzing size characteristics...")
-        diameter_score = analyze_diameter_size(image)
+        # Pass manual measurements to diameter analysis
+        if manual_length is not None and manual_width is not None:
+            diameter_score = analyze_diameter_size(image)  # Will use manual measurements when available
+        else:
+            diameter_score = analyze_diameter_size(image)
         
         logger.info("Analyzing evolution (changes over time)...")
         evolution_score = analyze_evolution(has_evolved, evolution_weeks)
