@@ -18,10 +18,18 @@ transform = None
 try:
     from enhanced_skin_analysis import get_advanced_skin_analysis
     advanced_analysis_available = True
-    logger.info("Advanced skin tone analysis module loaded successfully")
 except ImportError:
+    logger.warning("Enhanced skin analysis not available")
     advanced_analysis_available = False
-    logger.warning("Advanced skin analysis not available")
+
+# Try to import ISIC feature enhancement
+try:
+    from isic_feature_extractor import get_isic_enhanced_analysis
+    isic_enhancement_available = True
+    logger.info("ISIC feature enhancement module loaded successfully")
+except ImportError:
+    isic_enhancement_available = False
+    logger.warning("ISIC feature enhancement not available")
 
 # Try to import enhanced ISIC model
 try:
@@ -454,6 +462,37 @@ def predict_lesion(image_path, skin_type='III', body_part='other', has_evolved=F
                     logger.info(f"Advanced Analysis - Skin Type: {advanced_results.get('detected_skin_tone', 'Unknown')}")
                     logger.info(f"Features - A:{advanced_results.get('asymmetry', 0):.2f} B:{advanced_results.get('border', 0):.2f} C:{advanced_results.get('color', 0):.2f} D:{advanced_results.get('diameter', 0):.2f}")
                     logger.info(f"Final Assessment: {final_prediction}, Confidence: {final_confidence:.2f}%")
+                    
+                    # Apply ISIC enhancement if available
+                    if isic_enhancement_available:
+                        try:
+                            enhanced_features = get_isic_enhanced_analysis(advanced_results)
+                            if enhanced_features.get('isic_enhanced'):
+                                logger.info("Applied ISIC-based feature enhancement")
+                                # Recalculate weighted score with enhanced features
+                                enhanced_asymmetry = enhanced_features.get('asymmetry', asymmetry_score)
+                                enhanced_border = enhanced_features.get('border', border_score)
+                                enhanced_weighted_score = (enhanced_asymmetry * 0.25 + enhanced_border * 0.25 + 
+                                                         color_score * 0.20 + diameter_score * 0.15 + evolution_score * 0.15)
+                                
+                                # Update final prediction with enhanced scoring
+                                if enhanced_weighted_score > 0.7 or (enhanced_asymmetry > 0.7 and enhanced_border > 0.7):
+                                    final_prediction = "Highly Suspicious"
+                                    final_confidence = min(enhanced_weighted_score * 100, 95)
+                                elif enhanced_weighted_score > 0.5:
+                                    final_prediction = "Suspicious"
+                                    final_confidence = enhanced_weighted_score * 100
+                                elif enhanced_weighted_score > 0.35:
+                                    final_prediction = "Moderately Concerning"
+                                    final_confidence = enhanced_weighted_score * 90
+                                else:
+                                    final_prediction = "Benign"
+                                    final_confidence = max(20, 100 - enhanced_weighted_score * 100)
+                                
+                                advanced_results = enhanced_features
+                                logger.info(f"ISIC-Enhanced Assessment: {final_prediction}, Confidence: {final_confidence:.2f}%")
+                        except Exception as e:
+                            logger.warning(f"ISIC enhancement failed: {e}")
                     
                     # Return results with additional metadata for chatbot
                     return final_prediction, round(final_confidence, 2), advanced_results
