@@ -69,6 +69,16 @@ BIAS_WARNING_TYPES = ["V", "VI"]
 @app.route('/', methods=['GET', 'POST'])
 def home():
     """Main route for file upload and prediction."""
+    # Define Fitzpatrick skin types for template
+    fitzpatrick_types = {
+        'I': 'Always burns, never tans (Very fair skin)',
+        'II': 'Usually burns, tans minimally (Fair skin)',
+        'III': 'Sometimes burns, tans gradually (Medium skin)',
+        'IV': 'Minimal burning, tans well (Olive skin)',
+        'V': 'Rarely burns, tans easily (Brown skin)',
+        'VI': 'Never burns, deeply pigmented (Dark brown/black skin)'
+    }
+    
     if request.method == 'POST':
         try:
             # Check if file was uploaded

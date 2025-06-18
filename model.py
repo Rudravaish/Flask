@@ -249,6 +249,37 @@ def enhance_cnn_prediction(cnn_output, medical_scores):
     
     return combined_score
 
+def analyze_diameter_size_manual(length_mm, width_mm):
+    """Analyze diameter using manual measurements provided by user"""
+    try:
+        # Use the largest dimension as the effective diameter
+        max_diameter = max(length_mm, width_mm)
+        
+        # Score based on melanoma risk thresholds
+        # 6mm is the traditional ABCDE threshold, but modern guidelines consider smaller lesions
+        if max_diameter >= 10:
+            # Very large lesions are highly concerning
+            diameter_score = 0.9
+        elif max_diameter >= 6:
+            # Classic ABCDE threshold - concerning
+            diameter_score = 0.7
+        elif max_diameter >= 4:
+            # Moderate size - some concern
+            diameter_score = 0.5
+        elif max_diameter >= 2:
+            # Small but notable
+            diameter_score = 0.3
+        else:
+            # Very small lesions
+            diameter_score = 0.1
+        
+        logger.info(f"Manual diameter analysis: {max_diameter}mm max diameter, score: {diameter_score:.2f}")
+        return diameter_score
+        
+    except Exception as e:
+        logger.warning(f"Manual diameter analysis failed: {e}")
+        return 0.3  # Conservative fallback
+
 def analyze_evolution(has_evolved, evolution_weeks):
     """Analyze Evolution (E in ABCDE) - changes over time are highly concerning"""
     try:
@@ -351,9 +382,10 @@ def predict_lesion(image_path, skin_type='III', body_part='other', has_evolved=F
         color_score = analyze_color_variation(image)
         
         logger.info("Analyzing size characteristics...")
-        # Pass manual measurements to diameter analysis
+        # Use manual measurements if provided, otherwise analyze image
         if manual_length is not None and manual_width is not None:
-            diameter_score = analyze_diameter_size(image)  # Will use manual measurements when available
+            diameter_score = analyze_diameter_size_manual(manual_length, manual_width)
+            logger.info(f"Using manual measurements: {manual_length}mm x {manual_width}mm")
         else:
             diameter_score = analyze_diameter_size(image)
         
