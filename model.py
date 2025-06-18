@@ -464,56 +464,76 @@ def predict_lesion(image_path, skin_type='III', body_part='other', has_evolved=F
             except Exception as e:
                 logger.warning(f"Trained model failed, falling back to medical analysis: {e}")
         
-        # Enhanced medical analysis without CNN complexity
-        enhanced_score = (asymmetry_score + border_score + color_score + diameter_score) / 4.0
+        # Enhanced ABCDE medical analysis including Evolution and anatomical location
+        abcde_base_score = (asymmetry_score + border_score + color_score + diameter_score + evolution_score) / 5.0
         
-        # Enhanced medical risk assessment with improved weighting
+        # Apply anatomical location risk factor
+        final_risk_score = abcde_base_score * anatomical_risk_factor
+        
+        # Enhanced medical risk assessment with improved weighting including Evolution
         enhanced_asymmetry = min(asymmetry_score * 1.15, 1.0)  # Boost asymmetry importance
         enhanced_border = border_score
         enhanced_color = min(color_score * 1.1, 1.0)  # Boost color variation
         enhanced_diameter = diameter_score
+        enhanced_evolution = evolution_score
         
-        # Count concerning features for feature-based classification
-        concerning_features = sum(1 for score in [enhanced_asymmetry, enhanced_border, enhanced_color, enhanced_diameter] if score > 0.6)
+        # Count concerning features for feature-based classification (including Evolution)
+        concerning_features = sum(1 for score in [enhanced_asymmetry, enhanced_border, enhanced_color, enhanced_diameter, enhanced_evolution] if score > 0.6)
         
-        # Weighted risk score with clinical relevance
-        risk_score = (enhanced_asymmetry * 0.3 + enhanced_border * 0.3 + enhanced_color * 0.25 + enhanced_diameter * 0.15)
+        # Weighted risk score with clinical relevance including Evolution and anatomical location
+        weighted_risk_score = (enhanced_asymmetry * 0.25 + enhanced_border * 0.25 + enhanced_color * 0.2 + enhanced_diameter * 0.15 + enhanced_evolution * 0.15) * anatomical_risk_factor
         
-        # Combine with CNN enhanced score if available
-        if enhanced_score != 0.5:  # CNN analysis was successful
-            combined_score = (risk_score * 0.6 + enhanced_score * 0.4)
-        else:
-            combined_score = risk_score
+        # Use the weighted risk score that includes anatomical location
+        combined_score = weighted_risk_score
         
-        # Enhanced classification logic based on features and scores
-        if concerning_features >= 3 or combined_score > 0.75:
+        # Enhanced classification logic based on features and weighted risk score
+        if concerning_features >= 3 or weighted_risk_score > 0.75:
             final_prediction = "Highly Suspicious"
-            final_confidence = min(80 + (combined_score * 15), 95)
-        elif concerning_features >= 2 or combined_score > 0.55:
+            final_confidence = min(80 + (weighted_risk_score * 15), 95)
+        elif concerning_features >= 2 or weighted_risk_score > 0.55:
             final_prediction = "Suspicious"
-            final_confidence = 65 + (combined_score * 25)
-        elif concerning_features >= 1 or combined_score > 0.35:
+            final_confidence = 65 + (weighted_risk_score * 25)
+        elif concerning_features >= 1 or weighted_risk_score > 0.35:
             final_prediction = "Moderately Concerning"
-            final_confidence = 50 + (combined_score * 30)
+            final_confidence = 50 + (weighted_risk_score * 30)
         else:
             final_prediction = "Benign"
-            final_confidence = max(25, 80 - (combined_score * 55))
+            final_confidence = max(25, 80 - (weighted_risk_score * 55))
         
-        # Create analysis data for UI display
-        fallback_analysis = {
-            'asymmetry': enhanced_asymmetry,
-            'border': enhanced_border,
-            'color': enhanced_color,
-            'diameter': enhanced_diameter,
-            'detected_skin_tone': 'III',  # Default fallback
-            'analysis_type': 'enhanced_fallback'
+        # Create enhanced analysis data for UI display including Evolution and anatomical location
+        enhanced_analysis = {
+            'features': {
+                'asymmetry': enhanced_asymmetry,
+                'border': enhanced_border,
+                'color': enhanced_color,
+                'diameter': enhanced_diameter,
+                'evolution': enhanced_evolution
+            },
+            'anatomical_risk_factor': anatomical_risk_factor,
+            'body_part': body_part,
+            'detected_skin_tone': skin_type,
+            'analysis_type': 'enhanced_abcde_anatomical'
         }
         
-        logger.info(f"Enhanced Medical Analysis - Features: {concerning_features}/4 concerning")
-        logger.info(f"Enhanced scores - A:{enhanced_asymmetry:.2f} B:{enhanced_border:.2f} C:{enhanced_color:.2f} D:{enhanced_diameter:.2f}")
+        # Add optional data if provided
+        if manual_length is not None and manual_width is not None:
+            enhanced_analysis['manual_measurements'] = {
+                'length': manual_length,
+                'width': manual_width
+            }
+        
+        if has_evolved:
+            enhanced_analysis['evolution_info'] = {
+                'has_evolved': has_evolved,
+                'weeks': evolution_weeks
+            }
+        
+        logger.info(f"Enhanced ABCDE Analysis - Features: {concerning_features}/5 concerning")
+        logger.info(f"ABCDE scores - A:{enhanced_asymmetry:.2f} B:{enhanced_border:.2f} C:{enhanced_color:.2f} D:{enhanced_diameter:.2f} E:{enhanced_evolution:.2f}")
+        logger.info(f"Anatomical Risk Factor: {anatomical_risk_factor:.2f}x for {body_part}")
         logger.info(f"Final Assessment: {final_prediction}, Confidence: {final_confidence:.2f}%")
         
-        return final_prediction, round(final_confidence, 2), fallback_analysis
+        return final_prediction, round(final_confidence, 2), enhanced_analysis
         
     except Exception as e:
         logger.error(f"Error during prediction: {str(e)}")
