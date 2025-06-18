@@ -328,9 +328,14 @@
                             <i class="fas fa-chart-line me-2"></i>Analysis Details
                         </h5>
                         
+                        <h4 class="mb-3" style="color: black;">
+                            <i class="fas fa-list-check me-2"></i>
+                            ABCDE Feature Analysis
+                        </h4>
+                        
                         <div class="card mb-3">
                             <div class="card-header bg-light">
-                                <h6 class="mb-0">ABCDE Feature Analysis</h6>
+                                <h6 class="mb-0">Feature Scores</h6>
                             </div>
                             <div class="card-body">
                                 <div class="row">
@@ -377,9 +382,14 @@
                             </div>
                         </div>
                         
+                        <h4 class="mb-3 mt-4" style="color: black;">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Understanding Your Results
+                        </h4>
+                        
                         <div class="card">
                             <div class="card-header bg-light">
-                                <h6 class="mb-0">Understanding Your Results</h6>
+                                <h6 class="mb-0">Score Interpretation</h6>
                             </div>
                             <div class="card-body">
                                 <ul class="mb-0">
@@ -391,6 +401,60 @@
                                     Higher scores indicate features more commonly seen in malignant lesions. 
                                     This analysis is optimized for your skin type to improve accuracy.
                                 </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Future Recommendations -->
+                        <h4 class="mb-3 mt-4" style="color: black;">
+                            <i class="fas fa-calendar-check me-2"></i>
+                            Future Recommendations
+                        </h4>
+                        
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Next Steps Based on Your Results</h6>
+                            </div>
+                            <div class="card-body">
+                                {% if result == 'Highly Suspicious' or result == 'Suspicious' %}
+                                <div class="alert alert-warning mb-3">
+                                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Urgent Action Required</h6>
+                                    <ul class="mb-0">
+                                        <li><strong>Schedule a dermatologist appointment immediately</strong></li>
+                                        <li>Do not delay - contact your healthcare provider within 1-2 weeks</li>
+                                        <li>Take photos to track any changes before your appointment</li>
+                                        <li>Avoid excessive sun exposure to the area</li>
+                                    </ul>
+                                </div>
+                                {% elif result == 'Moderately Concerning' %}
+                                <div class="alert alert-info mb-3">
+                                    <h6><i class="fas fa-info-circle me-2"></i>Monitor and Schedule</h6>
+                                    <ul class="mb-0">
+                                        <li><strong>Schedule a routine dermatologist visit within 1-3 months</strong></li>
+                                        <li>Monitor the lesion weekly for any changes</li>
+                                        <li>Take monthly photos to track evolution</li>
+                                        <li>Use sun protection when outdoors</li>
+                                    </ul>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-success mb-3">
+                                    <h6><i class="fas fa-check-circle me-2"></i>Continue Monitoring</h6>
+                                    <ul class="mb-0">
+                                        <li><strong>Continue regular self-examinations monthly</strong></li>
+                                        <li>Schedule annual skin check with dermatologist</li>
+                                        <li>Watch for any changes in size, color, or texture</li>
+                                        <li>Maintain good sun protection habits</li>
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                
+                                <h6 class="mt-3">General Prevention Tips:</h6>
+                                <ul class="small">
+                                    <li>Use broad-spectrum SPF 30+ sunscreen daily</li>
+                                    <li>Perform monthly self-skin examinations</li>
+                                    <li>Avoid peak sun hours (10 AM - 4 PM)</li>
+                                    <li>Wear protective clothing and wide-brimmed hats</li>
+                                    <li>Report any new or changing moles to your doctor</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
