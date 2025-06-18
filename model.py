@@ -249,15 +249,61 @@ def enhance_cnn_prediction(cnn_output, medical_scores):
     
     return combined_score
 
-def predict_lesion(image_path):
+def analyze_evolution(has_evolved, evolution_weeks):
+    """Analyze Evolution (E in ABCDE) - changes over time are highly concerning"""
+    try:
+        if not has_evolved:
+            return 0.1  # No reported changes = low concern
+        
+        # Evolution is highly concerning - melanomas change rapidly
+        if evolution_weeks <= 4:
+            # Recent changes (within 4 weeks) are very concerning
+            evolution_score = 0.9
+        elif evolution_weeks <= 12:
+            # Changes within 3 months are concerning
+            evolution_score = 0.7
+        elif evolution_weeks <= 26:
+            # Changes within 6 months are moderately concerning
+            evolution_score = 0.5
+        else:
+            # Older changes still concerning but less urgent
+            evolution_score = 0.4
+        
+        logger.info(f"Evolution analysis: has_evolved={has_evolved}, weeks={evolution_weeks}, score={evolution_score:.2f}")
+        return evolution_score
+        
+    except Exception as e:
+        logger.warning(f"Evolution analysis failed: {e}")
+        return 0.3  # Conservative fallback
+
+def calculate_body_type_risk_factor(body_type):
+    """Calculate risk multiplier based on body type and medical history"""
+    risk_factors = {
+        "average": 1.0,
+        "fair_many_moles": 1.3,
+        "family_history": 1.4,
+        "previous_skin_cancer": 1.5,
+        "immunocompromised": 1.6,
+        "frequent_sun_exposure": 1.2
+    }
+    
+    return risk_factors.get(body_type, 1.0)
+
+def predict_lesion(image_path, skin_type='III', body_type='average', has_evolved=False, evolution_weeks=0, manual_length=None, manual_width=None):
     """
-    Predict whether a skin lesion is benign or suspicious.
+    Predict whether a skin lesion is benign or suspicious with enhanced medical parameters.
     
     Args:
         image_path (str): Path to the image file
+        skin_type (str): Fitzpatrick skin type (I-VI)
+        body_type (str): Risk profile based on medical history
+        has_evolved (bool): Whether the lesion has changed over time
+        evolution_weeks (int): Number of weeks since changes were noticed
+        manual_length (float): Manual measurement length in mm (optional)
+        manual_width (float): Manual measurement width in mm (optional)
         
     Returns:
-        tuple: (prediction, confidence_percentage)
+        tuple: (prediction, confidence_percentage, analysis_data)
     """
     image = None
     try:
@@ -295,6 +341,12 @@ def predict_lesion(image_path):
         
         logger.info("Analyzing size characteristics...")
         diameter_score = analyze_diameter_size(image)
+        
+        logger.info("Analyzing evolution (changes over time)...")
+        evolution_score = analyze_evolution(has_evolved, evolution_weeks)
+        
+        logger.info("Calculating body type risk factor...")
+        body_risk_factor = calculate_body_type_risk_factor(body_type)
         
         # Try advanced skin tone analysis first (best for darker skin tones)
         if advanced_analysis_available:

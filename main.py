@@ -42,14 +42,24 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Define Fitzpatrick skin types
+# Define Fitzpatrick skin types with detailed descriptions
 FITZPATRICK_TYPES = {
-    "I": "Very Light / Pale White",
-    "II": "Light / White", 
-    "III": "Light Brown",
-    "IV": "Moderate Brown",
-    "V": "Dark Brown",
-    "VI": "Very Dark Brown to Black"
+    "I": "Very fair - Always burns, never tans (Celtic, Scandinavian)",
+    "II": "Fair - Usually burns, tans poorly (Northern European)", 
+    "III": "Medium - Sometimes mild burn, tans uniformly (Mixed European)",
+    "IV": "Olive - Burns minimally, always tans well (Mediterranean, Asian)",
+    "V": "Brown - Rarely burns, tans profusely (Middle Eastern, Latino)",
+    "VI": "Dark brown/Black - Never burns, deeply pigmented (African, Aboriginal)"
+}
+
+# Body types with melanoma risk factors
+BODY_TYPES = {
+    "average": "Average risk profile",
+    "fair_many_moles": "Fair skin with many moles (50+ moles)",
+    "family_history": "Family history of melanoma",
+    "previous_skin_cancer": "Previous skin cancer diagnosis",
+    "immunocompromised": "Immunocompromised or taking immunosuppressive drugs",
+    "frequent_sun_exposure": "Frequent sun exposure or history of severe sunburns"
 }
 
 # Skin types with potential model bias
@@ -68,8 +78,17 @@ def home():
             
             file = request.files['image']
             
-            # Get selected skin type
+            # Get form parameters
             skin_type = request.form.get('skin_type', 'III')  # Default to Type III
+            body_type = request.form.get('body_type', 'average')  # Default to average risk
+            
+            # Evolution tracking (E in ABCDE)
+            has_evolved = request.form.get('has_evolved') == 'yes'
+            evolution_weeks = int(request.form.get('evolution_weeks', 0)) if request.form.get('evolution_weeks') else 0
+            
+            # Manual measurements (optional)
+            manual_length = float(request.form.get('manual_length', 0)) if request.form.get('manual_length') else None
+            manual_width = float(request.form.get('manual_width', 0)) if request.form.get('manual_width') else None
             
             # Check if file was actually selected
             if not file.filename or file.filename == '':
@@ -97,9 +116,17 @@ def home():
                 file.save(filepath)
                 app.logger.info(f"File saved to: {filepath}")
                 
-                # Make prediction
+                # Make prediction with enhanced parameters
                 try:
-                    prediction_result = predict_lesion(filepath)
+                    prediction_result = predict_lesion(
+                        filepath, 
+                        skin_type=skin_type,
+                        body_type=body_type,
+                        has_evolved=has_evolved,
+                        evolution_weeks=evolution_weeks,
+                        manual_length=manual_length,
+                        manual_width=manual_width
+                    )
                     
                     # Handle different return formats safely
                     if isinstance(prediction_result, tuple) and len(prediction_result) == 3:
