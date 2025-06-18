@@ -1,8 +1,11 @@
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
 from werkzeug.utils import secure_filename
 from model import predict_lesion
+from multi_input_model import get_multi_input_prediction, get_body_part_options
 import os
 import logging
+import json
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -206,7 +209,99 @@ def home():
             flash('An error occurred while processing your upload. Please try again.', 'error')
             return redirect(request.url)
     
-    return render_template('index.html', fitzpatrick_types=FITZPATRICK_TYPES)
+    return render_template('index.html', fitzpatrick_types=FITZPATRICK_TYPES, body_part_options=get_body_part_options())
+
+@app.route('/advanced')
+def advanced_analysis():
+    """Advanced analysis interface with EfficientNetB0 multi-input model"""
+    return render_template('advanced_analysis.html')
+
+@app.route('/predict', methods=['POST'])
+def predict_multi_input():
+    """
+    Advanced prediction endpoint using EfficientNetB0 multi-input model
+    Accepts image and patient metadata, returns comprehensive analysis
+    """
+    try:
+        # Validate file upload
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type. Please upload a valid image.'}), 400
+        
+        # Save uploaded file
+        filename = secure_filename(file.filename)
+        timestamp = str(int(time.time()))
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        file.save(filepath)
+        
+        # Extract metadata from form or JSON
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+        
+        # Validate and extract required parameters
+        try:
+            age = float(data.get('age', 50))
+            uv_exposure = float(data.get('uv_exposure', 5))
+            family_history = int(data.get('family_history', 0))
+            skin_type = int(data.get('skin_type', 3))
+            body_part = int(data.get('body_part', 10))
+            evolution_weeks = float(data.get('evolution_weeks', 0))
+        except (ValueError, TypeError) as e:
+            return jsonify({'error': f'Invalid parameter format: {str(e)}'}), 400
+        
+        # Validate parameter ranges
+        if not (0 <= age <= 120):
+            return jsonify({'error': 'Age must be between 0 and 120'}), 400
+        if not (0 <= uv_exposure <= 10):
+            return jsonify({'error': 'UV exposure must be between 0 and 10'}), 400
+        if family_history not in [0, 1]:
+            return jsonify({'error': 'Family history must be 0 or 1'}), 400
+        if not (1 <= skin_type <= 6):
+            return jsonify({'error': 'Skin type must be between 1 and 6'}), 400
+        if not (0 <= body_part <= 19):
+            return jsonify({'error': 'Body part must be between 0 and 19'}), 400
+        if evolution_weeks < 0:
+            return jsonify({'error': 'Evolution weeks must be non-negative'}), 400
+        
+        # Get prediction from multi-input model
+        try:
+            prediction_results = get_multi_input_prediction(
+                filepath, age, uv_exposure, family_history,
+                skin_type, body_part, evolution_weeks
+            )
+            
+            # Clean up uploaded file
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            
+            app.logger.info(f"Multi-input prediction completed: Risk={prediction_results['risk_level']}")
+            
+            return jsonify({
+                'success': True,
+                'results': prediction_results
+            })
+            
+        except Exception as e:
+            # Clean up uploaded file on error
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            app.logger.error(f"Multi-input prediction error: {str(e)}")
+            return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
+        
+    except Exception as e:
+        app.logger.error(f"Multi-input endpoint error: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.errorhandler(413)
 def too_large(e):

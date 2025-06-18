@@ -135,7 +135,7 @@
                                 <select name="skin_type" id="skin_type" class="form-select" required>
                                     {% for type_id, description in fitzpatrick_types.items() %}
                                     <option value="{{ type_id }}" {% if type_id == 'III' %}selected{% endif %}>
-                                        Type {{ type_id }} - {{ description }}
+                                        Type {{ type_id }}
                                     </option>
                                     {% endfor %}
                                 </select>
