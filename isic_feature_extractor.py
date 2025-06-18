@@ -117,19 +117,20 @@ class ISICFeatureExtractor:
             return 0.0
         
         # Vertical asymmetry
-        left_area = mask[:, :cx].sum() if cx > 0 else 0
-        right_area = mask[:, cx:].sum() if cx < w else 0
+        left_area = float(mask[:, :cx].sum()) if cx > 0 else 0.0
+        right_area = float(mask[:, cx:].sum()) if cx < w else 0.0
         
         # Horizontal asymmetry
-        top_area = mask[:cy, :].sum() if cy > 0 else 0
-        bottom_area = mask[cy:, :].sum() if cy < h else 0
+        top_area = float(mask[:cy, :].sum()) if cy > 0 else 0.0
+        bottom_area = float(mask[cy:, :].sum()) if cy < h else 0.0
         
-        total_area = mask.sum()
+        total_area = float(mask.sum())
         if total_area == 0:
             return 0.0
         
-        vertical_asym = abs(left_area - right_area) / total_area
-        horizontal_asym = abs(top_area - bottom_area) / total_area
+        # Prevent overflow by normalizing values
+        vertical_asym = abs(left_area - right_area) / max(total_area, 1.0)
+        horizontal_asym = abs(top_area - bottom_area) / max(total_area, 1.0)
         
         return (vertical_asym + horizontal_asym) / 2.0
     
