@@ -133,11 +133,12 @@
                                     <strong>Fitzpatrick Skin Type</strong>
                                 </label>
                                 <select name="skin_type" id="skin_type" class="form-select" required>
-                                    {% for type_id, description in fitzpatrick_types.items() %}
-                                    <option value="{{ type_id }}" {% if type_id == 'III' %}selected{% endif %}>
-                                        Type {{ type_id }}
-                                    </option>
-                                    {% endfor %}
+                                    <option value="I" {% if skin_type == 'I' %}selected{% endif %}>1</option>
+                                    <option value="II" {% if skin_type == 'II' %}selected{% endif %}>2</option>
+                                    <option value="III" {% if skin_type == 'III' %}selected{% endif %}>3</option>
+                                    <option value="IV" {% if skin_type == 'IV' %}selected{% endif %}>4</option>
+                                    <option value="V" {% if skin_type == 'V' %}selected{% endif %}>5</option>
+                                    <option value="VI" {% if skin_type == 'VI' %}selected{% endif %}>6</option>
                                 </select>
                                 
                                 <!-- Fitzpatrick Reference Patches -->
@@ -149,27 +150,27 @@
                                     <div class="row g-2">
                                         <div class="col-2 text-center">
                                             <div class="skin-patch" style="background-color: #fdbcb4; height: 30px; border-radius: 4px; border: 1px solid #ddd;"></div>
-                                            <small class="d-block mt-1">Type I</small>
+                                            <small class="d-block mt-1"><strong>1</strong></small>
                                         </div>
                                         <div class="col-2 text-center">
                                             <div class="skin-patch" style="background-color: #f1c27d; height: 30px; border-radius: 4px; border: 1px solid #ddd;"></div>
-                                            <small class="d-block mt-1">Type II</small>
+                                            <small class="d-block mt-1"><strong>2</strong></small>
                                         </div>
                                         <div class="col-2 text-center">
                                             <div class="skin-patch" style="background-color: #e0ac69; height: 30px; border-radius: 4px; border: 1px solid #ddd;"></div>
-                                            <small class="d-block mt-1">Type III</small>
+                                            <small class="d-block mt-1"><strong>3</strong></small>
                                         </div>
                                         <div class="col-2 text-center">
                                             <div class="skin-patch" style="background-color: #c68642; height: 30px; border-radius: 4px; border: 1px solid #ddd;"></div>
-                                            <small class="d-block mt-1">Type IV</small>
+                                            <small class="d-block mt-1"><strong>4</strong></small>
                                         </div>
                                         <div class="col-2 text-center">
                                             <div class="skin-patch" style="background-color: #8d5524; height: 30px; border-radius: 4px; border: 1px solid #ddd;"></div>
-                                            <small class="d-block mt-1">Type V</small>
+                                            <small class="d-block mt-1"><strong>5</strong></small>
                                         </div>
                                         <div class="col-2 text-center">
                                             <div class="skin-patch" style="background-color: #614335; height: 30px; border-radius: 4px; border: 1px solid #ddd;"></div>
-                                            <small class="d-block mt-1">Type VI</small>
+                                            <small class="d-block mt-1"><strong>6</strong></small>
                                         </div>
                                     </div>
                                 </div>
@@ -306,21 +307,11 @@
                     </div>
                     {% endif %}
                     
-                    <!-- Bias Warning -->
-                    {% if bias_warning %}
+                    <!-- Data Limitation Warning for All Skin Types -->
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Important Notice:</strong> {{ bias_warning }}
+                        <strong>Important Notice:</strong> Due to limited training data across all skin types, accuracy may be reduced. This tool is for reference only and should not replace professional medical consultation.
                     </div>
-                    {% endif %}
-                    
-                    <!-- Enhanced Warning for Darker Skin Tones -->
-                    {% if enhanced_warning %}
-                    <div class="alert alert-info" role="alert">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Enhanced Analysis:</strong> {{ enhanced_warning }}
-                    </div>
-                    {% endif %}
                     
                     <!-- Uploaded Image -->
                     {% if image_path %}
