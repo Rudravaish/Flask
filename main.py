@@ -80,7 +80,7 @@ def home():
             
             # Get form parameters
             skin_type = request.form.get('skin_type', 'III')  # Default to Type III
-            body_type = request.form.get('body_type', 'average')  # Default to average risk
+            body_part = request.form.get('body_part', 'other')  # Default to other location
             
             # Evolution tracking (E in ABCDE)
             has_evolved = request.form.get('has_evolved') == 'yes'
@@ -121,7 +121,7 @@ def home():
                     prediction_result = predict_lesion(
                         filepath, 
                         skin_type=skin_type,
-                        body_type=body_type,
+                        body_part=body_part,
                         has_evolved=has_evolved,
                         evolution_weeks=evolution_weeks,
                         manual_length=manual_length,

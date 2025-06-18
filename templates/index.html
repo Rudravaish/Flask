@@ -175,23 +175,28 @@
                                 </div>
                             </div>
 
-                            <!-- Body Type Risk Factors -->
+                            <!-- Body Part Location -->
                             <div class="mt-4">
-                                <label for="body_type" class="form-label">
-                                    <i class="fas fa-user-md me-2"></i>
-                                    <strong>Risk Profile</strong>
+                                <label for="body_part" class="form-label">
+                                    <i class="fas fa-body me-2"></i>
+                                    <strong>Body Part Location</strong>
                                 </label>
-                                <select class="form-select" name="body_type" id="body_type" required>
-                                    <option value="average">Average risk profile</option>
-                                    <option value="fair_many_moles">Fair skin with many moles (50+ moles)</option>
-                                    <option value="family_history">Family history of melanoma</option>
-                                    <option value="previous_skin_cancer">Previous skin cancer diagnosis</option>
-                                    <option value="immunocompromised">Immunocompromised or taking immunosuppressive drugs</option>
-                                    <option value="frequent_sun_exposure">Frequent sun exposure or history of severe sunburns</option>
+                                <select class="form-select" name="body_part" id="body_part" required>
+                                    <option value="trunk_back">Back/Trunk (High Risk)</option>
+                                    <option value="trunk_chest">Chest/Abdomen (High Risk)</option>
+                                    <option value="head_neck">Head/Neck/Face (High Risk)</option>
+                                    <option value="shoulders">Shoulders (High Risk)</option>
+                                    <option value="arms_upper">Upper Arms (Moderate Risk)</option>
+                                    <option value="arms_lower">Lower Arms/Hands (Moderate Risk)</option>
+                                    <option value="legs_upper">Upper Legs/Thighs (Moderate Risk)</option>
+                                    <option value="legs_lower">Lower Legs/Feet (Lower Risk)</option>
+                                    <option value="palms_soles">Palms/Soles (Special Consideration)</option>
+                                    <option value="genital_area">Genital Area (Special Consideration)</option>
+                                    <option value="other">Other Location</option>
                                 </select>
                                 <div class="form-text">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Medical history factors that may increase melanoma risk
+                                    Location affects melanoma risk - sun-exposed areas have higher rates
                                 </div>
                             </div>
 

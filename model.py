@@ -276,27 +276,38 @@ def analyze_evolution(has_evolved, evolution_weeks):
         logger.warning(f"Evolution analysis failed: {e}")
         return 0.3  # Conservative fallback
 
-def calculate_body_type_risk_factor(body_type):
-    """Calculate risk multiplier based on body type and medical history"""
+def calculate_anatomical_risk_factor(body_part):
+    """Calculate risk multiplier based on anatomical location - melanoma incidence varies by body site"""
+    # Risk factors based on melanoma epidemiology and sun exposure patterns
     risk_factors = {
-        "average": 1.0,
-        "fair_many_moles": 1.3,
-        "family_history": 1.4,
-        "previous_skin_cancer": 1.5,
-        "immunocompromised": 1.6,
-        "frequent_sun_exposure": 1.2
+        # High-risk sun-exposed areas
+        "trunk_back": 1.4,         # Back - highest melanoma rates in men
+        "trunk_chest": 1.3,        # Chest/abdomen - high UV exposure
+        "head_neck": 1.35,         # Head/neck/face - chronic sun exposure
+        "shoulders": 1.3,          # Shoulders - high intermittent sun exposure
+        
+        # Moderate-risk areas
+        "arms_upper": 1.1,         # Upper arms - moderate sun exposure
+        "arms_lower": 1.0,         # Lower arms/hands - moderate risk
+        "legs_upper": 1.2,         # Upper legs/thighs - higher in women
+        "legs_lower": 0.9,         # Lower legs/feet - lower overall risk
+        
+        # Special consideration areas
+        "palms_soles": 1.5,        # Acral lentiginous melanoma - different pathogenesis
+        "genital_area": 1.2,       # Mucosal melanoma - aggressive type
+        "other": 1.0               # Default baseline risk
     }
     
-    return risk_factors.get(body_type, 1.0)
+    return risk_factors.get(body_part, 1.0)
 
-def predict_lesion(image_path, skin_type='III', body_type='average', has_evolved=False, evolution_weeks=0, manual_length=None, manual_width=None):
+def predict_lesion(image_path, skin_type='III', body_part='other', has_evolved=False, evolution_weeks=0, manual_length=None, manual_width=None):
     """
     Predict whether a skin lesion is benign or suspicious with enhanced medical parameters.
     
     Args:
         image_path (str): Path to the image file
         skin_type (str): Fitzpatrick skin type (I-VI)
-        body_type (str): Risk profile based on medical history
+        body_part (str): Anatomical location of the lesion
         has_evolved (bool): Whether the lesion has changed over time
         evolution_weeks (int): Number of weeks since changes were noticed
         manual_length (float): Manual measurement length in mm (optional)
@@ -349,8 +360,8 @@ def predict_lesion(image_path, skin_type='III', body_type='average', has_evolved
         logger.info("Analyzing evolution (changes over time)...")
         evolution_score = analyze_evolution(has_evolved, evolution_weeks)
         
-        logger.info("Calculating body type risk factor...")
-        body_risk_factor = calculate_body_type_risk_factor(body_type)
+        logger.info("Calculating anatomical location risk factor...")
+        anatomical_risk_factor = calculate_anatomical_risk_factor(body_part)
         
         # Try advanced skin tone analysis first (best for darker skin tones)
         if advanced_analysis_available:
