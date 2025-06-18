@@ -42,8 +42,8 @@ class MultiInputSkinLesionModel(nn.Module):
         self.body_part_embedding = nn.Embedding(num_body_parts, 16)
         
         # Metadata processing layers
-        # Numeric inputs: age, UV exposure, family history (binary), evolution weeks
-        self.metadata_dim = 4 + 8 + 16  # numeric + embeddings
+        # Numeric inputs: age, UV exposure, family history (binary), evolution weeks, length_mm, width_mm
+        self.metadata_dim = 6 + 8 + 16  # numeric + embeddings
         
         # Combined feature processing
         self.combined_dim = self.image_feature_dim + self.metadata_dim
@@ -111,7 +111,7 @@ class MultiInputSkinLesionModel(nn.Module):
             nn.Sigmoid()
         )
         
-    def forward(self, image, age, uv_exposure, family_history, skin_type, body_part, evolution_weeks):
+    def forward(self, image, age, uv_exposure, family_history, skin_type, body_part, evolution_weeks, length_mm=None, width_mm=None):
         """
         Forward pass through the multi-input model
         
@@ -132,20 +132,28 @@ class MultiInputSkinLesionModel(nn.Module):
         skin_type_emb = self.skin_type_embedding(skin_type)  # (batch_size, 8)
         body_part_emb = self.body_part_embedding(body_part)  # (batch_size, 16)
         
+        # Handle manual measurements (default to 0 if not provided)
+        if length_mm is None:
+            length_mm = torch.zeros_like(age)
+        if width_mm is None:
+            width_mm = torch.zeros_like(age)
+        
         # Combine numeric metadata
         numeric_metadata = torch.cat([
             age.unsqueeze(1) if age.dim() == 1 else age,
             uv_exposure.unsqueeze(1) if uv_exposure.dim() == 1 else uv_exposure,
             family_history.unsqueeze(1) if family_history.dim() == 1 else family_history,
-            evolution_weeks.unsqueeze(1) if evolution_weeks.dim() == 1 else evolution_weeks
-        ], dim=1)  # (batch_size, 4)
+            evolution_weeks.unsqueeze(1) if evolution_weeks.dim() == 1 else evolution_weeks,
+            length_mm.unsqueeze(1) if length_mm.dim() == 1 else length_mm,
+            width_mm.unsqueeze(1) if width_mm.dim() == 1 else width_mm
+        ], dim=1)  # (batch_size, 6)
         
         # Combine all metadata
         metadata_features = torch.cat([
             numeric_metadata,
             skin_type_emb,
             body_part_emb
-        ], dim=1)  # (batch_size, 28)
+        ], dim=1)  # (batch_size, 30)
         
         # Combine image and metadata features
         combined_features = torch.cat([image_features, metadata_features], dim=1)
@@ -314,7 +322,7 @@ class SkinLesionPredictor:
             raise
     
     def predict(self, image_path, age, uv_exposure, family_history, 
-                skin_type, body_part, evolution_weeks):
+                skin_type, body_part, evolution_weeks, length_mm=0, width_mm=0):
         """
         Complete prediction pipeline
         
@@ -342,11 +350,14 @@ class SkinLesionPredictor:
             skin_tensor = torch.tensor([int(skin_type) - 1], device=self.device)  # Convert to 0-5
             body_tensor = torch.tensor([int(body_part)], device=self.device)
             evolution_tensor = torch.tensor([float(evolution_weeks)], device=self.device)
+            length_tensor = torch.tensor([float(length_mm)], device=self.device)
+            width_tensor = torch.tensor([float(width_mm)], device=self.device)
             
             # Model prediction
             with torch.no_grad():
                 outputs = self.model(image_tensor, age_tensor, uv_tensor, 
-                                   family_tensor, skin_tensor, body_tensor, evolution_tensor)
+                                   family_tensor, skin_tensor, body_tensor, evolution_tensor,
+                                   length_tensor, width_tensor)
             
             # Process predictions
             risk_probs = outputs['risk_probs'].cpu().numpy()[0]
@@ -382,7 +393,11 @@ class SkinLesionPredictor:
                     'family_history': bool(family_history),
                     'skin_type': skin_type,
                     'body_part': self.body_parts[body_part] if body_part < len(self.body_parts) else 'unknown',
-                    'evolution_weeks': evolution_weeks
+                    'evolution_weeks': evolution_weeks,
+                    'manual_measurements': {
+                        'length_mm': length_mm,
+                        'width_mm': width_mm
+                    }
                 }
             }
             
