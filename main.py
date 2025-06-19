@@ -53,11 +53,11 @@ def home():
     if request.method == 'POST':
         try:
             # Check if file was uploaded
-            if 'file' not in request.files:
+            if 'image' not in request.files:
                 flash('No file selected', 'error')
                 return redirect(request.url)
             
-            file = request.files['file']
+            file = request.files['image']
             if file.filename == '':
                 flash('No file selected', 'error')
                 return redirect(request.url)
@@ -71,7 +71,16 @@ def home():
             skin_type = request.form.get('skin_type', 'III')
             body_part = request.form.get('body_part', 'other')
             has_evolved = 'has_evolved' in request.form
-            evolution_weeks = int(request.form.get('evolution_weeks', 0)) if has_evolved else 0
+            
+            # Handle evolution_weeks with proper validation
+            evolution_weeks_raw = request.form.get('evolution_weeks', '')
+            if has_evolved and evolution_weeks_raw and evolution_weeks_raw.strip():
+                try:
+                    evolution_weeks = int(evolution_weeks_raw)
+                except ValueError:
+                    evolution_weeks = 0
+            else:
+                evolution_weeks = 0
             
             # Save uploaded file
             if file and file.filename and allowed_file(file.filename):
@@ -162,4 +171,4 @@ def handle_exception(e):
     return render_template('index.html', error="An unexpected error occurred"), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)
