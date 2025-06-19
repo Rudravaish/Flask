@@ -74,7 +74,7 @@ def home():
             evolution_weeks = int(request.form.get('evolution_weeks', 0)) if has_evolved else 0
             
             # Save uploaded file
-            if file and allowed_file(file.filename):
+            if file and file.filename and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 timestamp = str(int(time.time()))
                 unique_filename = f"{timestamp}_{filename}"
